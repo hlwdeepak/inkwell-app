@@ -1,3 +1,5 @@
+const Database = require('better-sqlite3');
+const path = require('path');
 const fs = require('fs');
 const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'inkwell.db');
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
