@@ -37,4 +37,4 @@ services:
       - key: COMPANY_ADDRESS
         value: 100 Innovation Way, Suite 400, San Francisco, CA 94105
       - key: APP_URL
-        sync: false
+        value: https://inkwell-app-mauv.onrender.com
