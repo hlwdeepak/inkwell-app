@@ -3,7 +3,7 @@ services:
     name: inkwell-app
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && npm rebuild better-sqlite3
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
