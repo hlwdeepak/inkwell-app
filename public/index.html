@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inkwell — Email Marketing Platform</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="side">
+    <div class="brand">
+      <span>Inkwell</span>
+      <span class="brand-badge">Pro</span>
+    </div>
+    
+    <div class="nav-section">Marketing</div>
+    <button class="nav-btn active" data-tab="subscribers">
+      <span class="nav-icon">👥</span> Subscribers
+    </button>
+    <button class="nav-btn" data-tab="compose">
+      <span class="nav-icon">✍️</span> Compose Email
+    </button>
+    <button class="nav-btn" data-tab="campaigns">
+      <span class="nav-icon">🚀</span> Campaigns
+    </button>
+    
+    <div class="nav-section" style="margin-top:16px;">Growth & Health</div>
+    <button class="nav-btn" data-tab="deliverability">
+      <span class="nav-icon">📊</span> Deliverability
+    </button>
+    <button class="nav-btn" data-tab="forms">
+      <span class="nav-icon">⚡</span> Embed Form
+    </button>
+
+    <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);">
+      <button class="nav-btn" onclick="openKeyModal()" style="font-size: 13px; color: var(--text-dim);">
+        <span class="nav-icon">🔑</span> API Key Config
+      </button>
+    </div>
+  </div>
+
+  <!-- Main View -->
+  <div class="main">
+    
+    <!-- API Key Notice Banner if not saved -->
+    <div id="key-setup" class="panel hidden" style="border-left: 4px solid var(--primary);">
+      <div class="panel-body" style="display:flex; align-items:center; justify-content:space-between; gap:20px;">
+        <div>
+          <h4 style="margin-bottom:4px;">Admin API Key Required</h4>
+          <p class="muted" style="margin:0; font-size:13px;">Enter the ADMIN_API_KEY from your .env to manage campaigns and subscribers.</p>
+        </div>
+        <div style="display:flex; gap:10px; min-width:320px;">
+          <input id="api-key" type="password" placeholder="Paste your ADMIN_API_KEY" style="margin:0;">
+          <button class="btn" onclick="saveKey()">Connect</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. SUBSCRIBERS TAB -->
+    <div id="subscribers" class="tab">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Subscribers</h1>
+          <p class="page-subtitle" id="sub-count">Managing list contacts</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-secondary" onclick="openCsvModal()">📁 Import CSV</button>
+          <button class="btn" onclick="openAddSubModal()">+ Add Subscriber</button>
+        </div>
+      </div>
+
+      <!-- Filters & Search -->
+      <div class="panel" style="margin-bottom: 16px;">
+        <div class="panel-body" style="padding:14px 20px; display:flex; gap:14px; align-items:center;">
+          <input id="sub-search" placeholder="🔍 Search email or name..." style="margin:0; flex:2;" oninput="debounceSubscribersSearch()">
+          <select id="sub-filter-list" style="margin:0; flex:1;" onchange="loadSubscribers()"></select>
+          <select id="sub-filter-tag" style="margin:0; flex:1;" onchange="loadSubscribers()">
+            <option value="">All Tags</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>List</th>
+              <th>Tags</th>
+              <th>Status</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sub-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. COMPOSE TAB (Side-by-side with Live Desktop/Mobile Preview) -->
+    <div id="compose" class="tab hidden">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Compose Campaign</h1>
+          <p class="page-subtitle">Design, personalize, and target your audience</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" onclick="createCampaign()">Save Campaign</button>
+        </div>
+      </div>
+
+      <div class="compose-grid">
+        <!-- Editor Column -->
+        <div class="panel">
+          <div class="panel-head">Campaign Settings</div>
+          <div class="panel-body">
+            
+            <label>Template Design</label>
+            <select id="c-template" onchange="applyTemplatePreset()">
+              <option value="newsletter">Modern Announcement / Newsletter</option>
+              <option value="deal">Promotional Deal / Launch</option>
+              <option value="minimal">Clean Personal Letter</option>
+              <option value="custom">Raw / Custom HTML</option>
+            </select>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label style="margin:0;">Subject Line</label>
+              <label style="margin:0; font-size:12px; cursor:pointer; color:var(--accent-blue);">
+                <input type="checkbox" id="c-ab-toggle" onchange="toggleAbSubject()" style="width:auto; margin:0 4px 0 0;"> A/B Subject Test
+              </label>
+            </div>
+            <input id="c-subject" placeholder="e.g. Big Product Update Inside! 🎉" oninput="updateLivePreview()">
+
+            <div id="ab-subject-container" class="hidden">
+              <label style="color:var(--accent-purple);">Subject Line Variant B</label>
+              <input id="c-subject-b" placeholder="e.g. Don't miss this update..." oninput="updateLivePreview()">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label>Target Audience List</label>
+                <select id="c-list"></select>
+              </div>
+              <div>
+                <label>Target Tag (Optional)</label>
+                <select id="c-tag-filter">
+                  <option value="">All Subscribers on List</option>
+                </select>
+              </div>
+            </div>
+
+            <label>Headline / Title</label>
+            <input id="c-headline" placeholder="Welcome to our newest features" oninput="updateLivePreview()">
+
+            <label>Message Content (Supports HTML & {{first_name}})</label>
+            <textarea id="c-body" placeholder="<p>Hey {{first_name}},</p><p>We are thrilled to announce...</p>" oninput="updateLivePreview()"></textarea>
+
+            <div id="cta-fields" style="display:grid; grid-template-columns:1fr 2fr; gap:12px;">
+              <div>
+                <label>CTA Button Text</label>
+                <input id="c-cta-text" placeholder="Explore Now" oninput="updateLivePreview()">
+              </div>
+              <div>
+                <label>CTA Target URL</label>
+                <input id="c-cta-url" placeholder="https://yourwebsite.com" oninput="updateLivePreview()">
+              </div>
+            </div>
+
+            <!-- Pre-send Deliverability Heuristic Box -->
+            <div id="spam-warnings" style="margin-top:12px;"></div>
+
+            <!-- Schedule Options -->
+            <div style="margin-top:16px; padding:16px; background:var(--bg-input); border-radius:var(--radius-md);">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="c-schedule-toggle" onchange="toggleScheduleInput()" style="width:auto; margin:0;">
+                Schedule for future delivery
+              </label>
+              <div id="schedule-container" class="hidden" style="margin-top:10px;">
+                <input type="datetime-local" id="c-scheduled-time" style="margin:0;">
+              </div>
+            </div>
+
+            <div id="status" style="margin-top:14px; font-weight:600;"></div>
+          </div>
+        </div>
+
+        <!-- Live Preview Column -->
+        <div class="preview-container">
+          <div class="preview-bar">
+            <span style="font-weight:700; font-size:13px; color:var(--text-muted);">Live Email Preview</span>
+            <div class="device-toggle">
+              <button class="device-btn active" id="btn-desktop" onclick="setPreviewDevice('desktop')">🖥️ Desktop</button>
+              <button class="device-btn" id="btn-mobile" onclick="setPreviewDevice('mobile')">📱 Mobile</button>
+            </div>
+          </div>
+          <div class="preview-frame-wrapper">
+            <iframe id="email-preview-frame" class="preview-frame" srcdoc=""></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. CAMPAIGNS TAB -->
+    <div id="campaigns" class="tab hidden">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Campaigns</h1>
+          <p class="page-subtitle">Track sent, scheduled, and draft broadcasts</p>
+        </div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Sent</th>
+              <th>Opens</th>
+              <th>Clicks</th>
+              <th>A/B Results</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="camp-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 4. DELIVERABILITY TAB -->
+    <div id="deliverability" class="tab hidden">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Deliverability Health</h1>
+          <p class="page-subtitle">Sender reputation monitoring and hygiene</p>
+        </div>
+      </div>
+
+      <div id="deliv-report"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span>Cold Subscribers (Inactive for 180+ Days)</span>
+          <button class="btn btn-sm btn-danger" onclick="suppressSelectedCold()">Suppress Selected</button>
+        </div>
+        <div class="panel-body">
+          <p class="muted" style="margin-bottom:14px;">Suppressing disengaged contacts improves your domain reputation with Gmail and Yahoo.</p>
+          <table>
+            <thead>
+              <tr>
+                <th width="40"><input type="checkbox" id="cold-select-all" onclick="toggleAllCold(this)"></th>
+                <th>Email</th>
+                <th>Last Engaged</th>
+                <th>Confirmed At</th>
+              </tr>
+            </thead>
+            <tbody id="cold-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. EMBED FORM / WIDGET TAB -->
+    <div id="forms" class="tab hidden">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Embeddable Signup Widget</h1>
+          <p class="page-subtitle">Capture leads on WordPress, Shopify, Webflow, or custom sites</p>
+        </div>
+      </div>
+
+      <div class="compose-grid">
+        <div class="panel">
+          <div class="panel-head">Widget Customizer</div>
+          <div class="panel-body">
+            <label>Target List</label>
+            <select id="embed-list-id" onchange="generateEmbedCode()"></select>
+
+            <label>Widget Headline</label>
+            <input id="embed-title" value="Subscribe to our newsletter" oninput="generateEmbedCode()">
+
+            <label>Brand Button Color</label>
+            <input type="color" id="embed-color" value="#0d9488" style="height:44px; padding:4px;" onchange="generateEmbedCode()">
+
+            <label style="margin-top:12px;">Copy Embed Code</label>
+            <div class="code-box" id="embed-code-display"></div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="copyEmbedCode()">📋 Copy Code</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">Live Widget Preview</div>
+          <div class="panel-body" style="display:flex; justify-content:center; align-items:center; min-height:300px; background:#070a0f;">
+            <div id="embed-live-preview"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: ADD SUBSCRIBER -->
+<div id="add-sub-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">Add Subscriber</h3>
+      <button onclick="closeAddSubModal()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">&times;</button>
+    </div>
+    <label>Email Address</label>
+    <input id="modal-sub-email" placeholder="alex@example.com">
+    <label>First Name (Optional)</label>
+    <input id="modal-sub-name" placeholder="Alex">
+    <label>Target List</label>
+    <select id="modal-sub-list"></select>
+    <label>Tags (Comma separated, e.g. vip, lead, customer)</label>
+    <input id="modal-sub-tags" placeholder="vip, lead">
+    <label>Status</label>
+    <select id="modal-sub-status">
+      <option value="active">Active (Direct Add)</option>
+      <option value="pending">Pending (Send Double Opt-in)</option>
+    </select>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+      <button class="btn btn-secondary" onclick="closeAddSubModal()">Cancel</button>
+      <button class="btn" onclick="saveSubscriberModal()">Add Contact</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CSV BULK IMPORT -->
+<div id="csv-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">Bulk CSV Import</h3>
+      <button onclick="closeCsvModal()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">&times;</button>
+    </div>
+    
+    <div class="dropzone" id="csv-dropzone" onclick="document.getElementById('csv-file-input').click()">
+      <div class="dropzone-icon">📄</div>
+      <div style="font-weight:700; margin-bottom:4px;">Click to select or drag CSV file here</div>
+      <div class="muted" style="font-size:12px;">Auto-detects: email, first_name, and tags columns</div>
+      <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="handleCsvFileSelected(event)">
+    </div>
+    <div id="csv-preview-info" style="margin-top:12px; font-size:13px; color:var(--accent-blue);"></div>
+
+    <div style="margin-top:16px;">
+      <label>Target List</label>
+      <select id="csv-list-id"></select>
+
+      <label>Append Tag to All Imported Contacts (Optional)</label>
+      <input id="csv-append-tags" placeholder="e.g. 2026-campaign-leads">
+
+      <label>Import Status</label>
+      <select id="csv-status">
+        <option value="active">Active (Pre-verified / imported list)</option>
+        <option value="pending">Pending (Requires Double Opt-in)</option>
+      </select>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+      <button class="btn btn-secondary" onclick="closeCsvModal()">Cancel</button>
+      <button class="btn" id="csv-import-btn" onclick="executeCsvImport()" disabled>Start Import</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
